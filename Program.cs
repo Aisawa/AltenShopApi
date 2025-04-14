@@ -2,22 +2,33 @@ using AltenShopApi.Data;
 using AltenShopApi.Services;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.HttpsPolicy;
+using Microsoft.AspNetCore.Server.Kestrel.Core;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
 using Microsoft.OpenApi.Models;
 using System.Text;
 
-var builder = WebApplication.CreateBuilder(args);
-
-// Désactive complètement HTTPS en développement
-if (builder.Environment.IsDevelopment())
+var builder = WebApplication.CreateBuilder(new WebApplicationOptions
 {
-    builder.Services.Configure<HttpsRedirectionOptions>(options =>
-    {
-        options.HttpsPort = null;
-        options.RedirectStatusCode = StatusCodes.Status308PermanentRedirect;
-    });
-}
+    Args = args,
+    EnvironmentName = Environments.Development,
+    // Force explicitement les URLs HTTP
+    //WebHostDefaults = {
+    //    UseUrls = "http://localhost:5186"
+    //}
+});
+
+builder.Services.Configure<HttpsRedirectionOptions>(options =>
+{
+    options.HttpsPort = null;
+});
+
+builder.WebHost.ConfigureKestrel(serverOptions =>
+{
+    serverOptions.ListenLocalhost(5186); // HTTP uniquement
+});
+
+builder.WebHost.UseUrls("http://localhost:5186");
 
 // Configuration CORS
 builder.Services.AddCors(options =>
@@ -26,7 +37,8 @@ builder.Services.AddCors(options =>
     {
         policy.WithOrigins("http://localhost:4200")
               .AllowAnyHeader()
-              .AllowAnyMethod();
+              .AllowAnyMethod()
+              .AllowCredentials();
     });
 });
 
@@ -109,22 +121,56 @@ builder.Services.AddAuthentication(options =>
 
 var app = builder.Build();
 
+app.Use(async (context, next) =>
+{
+    // Intercepte les tentatives de redirection vers HTTPS
+    if (context.Request.IsHttps || context.Request.Host.Port == 7209)
+    {
+        var newUrl = new UriBuilder(context.Request.Scheme, "localhost", 5186)
+        {
+            Path = context.Request.Path,
+            Query = context.Request.QueryString.Value
+        }.Uri.ToString();
+
+        context.Response.Redirect(newUrl, false);
+        return;
+    }
+    await next();
+});
+
 // Configure middleware
 if (app.Environment.IsDevelopment())
 {
-    app.UseSwagger();
-    app.UseSwaggerUI();
+    app.UseSwagger(options =>
+    {
+        options.PreSerializeFilters.Add((swagger, httpReq) =>
+        {
+            swagger.Servers = new List<OpenApiServer>
+            {
+                new OpenApiServer { Url = $"http://{httpReq.Host}" }
+            };
+        });
+    });
+
+    app.UseSwaggerUI(c =>
+    {
+        c.SwaggerEndpoint("/swagger/v1/swagger.json", "API V1");
+        c.ConfigObject.AdditionalItems["urls.primaryName"] = "HTTP";
+    });
     app.UseDeveloperExceptionPage();
 }
 
-app.Use(async (context, next) =>
-{
-    context.Response.Headers.Add("Access-Control-Allow-Origin", "http://localhost:4200");
-    await next();
-});
+//app.Use(async (context, next) =>
+//{
+//    context.Response.Headers.Add("Access-Control-Allow-Origin", "http://localhost:4200");
+//    await next();
+//});
 app.UseRouting();
 app.UseCors("AllowAngular");
-app.UseHttpsRedirection();
+if (!app.Environment.IsDevelopment())
+{
+    app.UseHttpsRedirection(); // Gardez la redirection HTTPS seulement en production
+}
 app.UseAuthentication();
 app.UseAuthorization();
 app.MapControllers();
