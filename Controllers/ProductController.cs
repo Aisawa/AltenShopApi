@@ -54,7 +54,7 @@ namespace AltenShopApi.Controllers
         }
 
         [HttpDelete("products/{id}")]
-        //[AdminOnly]
+        [AdminOnly]
         [ProducesResponseType(StatusCodes.Status200OK)]
         [ProducesResponseType(StatusCodes.Status404NotFound)]
         [ProducesResponseType(StatusCodes.Status500InternalServerError)]
@@ -70,7 +70,7 @@ namespace AltenShopApi.Controllers
         }
 
         [HttpPut("products/{id}")]
-        //[AdminOnly]
+        [AdminOnly]
         [ProducesResponseType(StatusCodes.Status200OK)]
         [ProducesResponseType(StatusCodes.Status400BadRequest)]
         [ProducesResponseType(StatusCodes.Status404NotFound)]
@@ -92,7 +92,7 @@ namespace AltenShopApi.Controllers
         }
 
         [HttpPost("products")]
-        //[AdminOnly]
+        [AdminOnly]
         [ProducesResponseType(StatusCodes.Status201Created)]
         [ProducesResponseType(StatusCodes.Status400BadRequest)]
         [ProducesResponseType(StatusCodes.Status500InternalServerError)]

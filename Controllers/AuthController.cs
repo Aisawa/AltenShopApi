@@ -4,8 +4,8 @@ using Microsoft.AspNetCore.Mvc;
 
 namespace AltenShopApi.Controllers
 {
-    [ApiController]
-    [Route("api")]
+    //[ApiController]
+    //[Route("api")]
     public class AuthController : ControllerBase
     {
         private readonly IAuthService _authService;
