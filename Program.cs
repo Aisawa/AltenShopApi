@@ -12,10 +12,6 @@ var builder = WebApplication.CreateBuilder(new WebApplicationOptions
 {
     Args = args,
     EnvironmentName = Environments.Development,
-    // Force explicitement les URLs HTTP
-    //WebHostDefaults = {
-    //    UseUrls = "http://localhost:5186"
-    //}
 });
 
 builder.Services.Configure<HttpsRedirectionOptions>(options =>
@@ -25,7 +21,7 @@ builder.Services.Configure<HttpsRedirectionOptions>(options =>
 
 builder.WebHost.ConfigureKestrel(serverOptions =>
 {
-    serverOptions.ListenLocalhost(5186); // HTTP uniquement
+    serverOptions.ListenLocalhost(5186); // On utilise le HTTP uniquement
 });
 
 builder.WebHost.UseUrls("http://localhost:5186");
@@ -43,12 +39,12 @@ builder.Services.AddCors(options =>
 });
 
 // Add services to the container
-builder.Services.AddAuthorization(); // <-- Correction ici
-builder.Services.AddControllers();   // Nécessaire pour les API controllers
+builder.Services.AddAuthorization();
+builder.Services.AddControllers();
 
 // Add services to the container
 builder.Services.AddEndpointsApiExplorer();
-// Configurer swagger pour tester JWT
+// Configurer swagger pour tester le JWT
 builder.Services.AddSwaggerGen(c =>
 {
     c.SwaggerDoc("v1", new OpenApiInfo { Title = "AltenShop API", Version = "v1" });
@@ -88,11 +84,11 @@ builder.Services.AddMemoryCache();
 builder.Services.AddSingleton<ICacheService, CacheService>();
 builder.Services.AddScoped<IAuthService, AuthService>();
 
-// Configuration Entity Framework avec SQLite (ou SQL Server selon votre préférence)
+// Configuration Entity Framework avec SQL Server
 builder.Services.AddDbContext<AltenShopDbContext>(options =>
     options.UseSqlServer(builder.Configuration.GetConnectionString("DefaultConnection")));
 
-// Enregistrer le service de base de données des séries
+// Enregistrer le service de base de données des produits
 builder.Services.AddScoped<IProductService, ProductService>();
 
 // Configurer JWT
@@ -123,7 +119,7 @@ var app = builder.Build();
 
 app.Use(async (context, next) =>
 {
-    // Intercepte les tentatives de redirection vers HTTPS
+    // Capte les tentatives de redirection vers HTTPS pour forcer sur http en développement
     if (context.Request.IsHttps || context.Request.Host.Port == 7209)
     {
         var newUrl = new UriBuilder(context.Request.Scheme, "localhost", 5186)
@@ -138,7 +134,7 @@ app.Use(async (context, next) =>
     await next();
 });
 
-// Configure middleware
+// Configuration du middleware
 if (app.Environment.IsDevelopment())
 {
     app.UseSwagger(options =>
@@ -160,16 +156,11 @@ if (app.Environment.IsDevelopment())
     app.UseDeveloperExceptionPage();
 }
 
-//app.Use(async (context, next) =>
-//{
-//    context.Response.Headers.Add("Access-Control-Allow-Origin", "http://localhost:4200");
-//    await next();
-//});
 app.UseRouting();
 app.UseCors("AllowAngular");
 if (!app.Environment.IsDevelopment())
 {
-    app.UseHttpsRedirection(); // Gardez la redirection HTTPS seulement en production
+    app.UseHttpsRedirection(); // On garde la redirection HTTPS seulement en production
 }
 app.UseAuthentication();
 app.UseAuthorization();

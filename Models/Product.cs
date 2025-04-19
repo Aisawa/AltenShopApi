@@ -25,7 +25,7 @@ namespace AltenShopApi.Models
         [JsonPropertyName("shellId")]
         public int ShellId { get; set; }
         [JsonPropertyName("inventoryStatus")]
-        public string InventoryStatus { get; set; } // --> ENUM "INSTOCK" | "LOWSTOCK" | "OUTOFSTOCK";
+        public string InventoryStatus { get; set; }
         [JsonPropertyName("rating")]
         public int Rating { get; set; }
         [JsonPropertyName("createdAt")]

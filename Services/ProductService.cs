@@ -22,8 +22,6 @@ namespace AltenShopApi.Services
             try
             {
                 var product = await _context.Products
-                    //.Include(s => s.Sets)
-                    //.ThenInclude(set => set.CardCount)
                     .ToListAsync();
 
                 return ApiResponse<List<DbProduct>>.CreateSuccess(product);
@@ -91,12 +89,12 @@ namespace AltenShopApi.Services
             }
         }
 
-        public async Task<ApiResponse<DbProduct>> UpdateProductAsync(string id, DbProduct updatedProduct)
+        public async Task<ApiResponse<DbProduct>> UpdateProductAsync(string id, DbProduct product)
         {
             try
             {
                 int productId = Convert.ToInt32(id);
-                if (productId != updatedProduct.Id)
+                if (productId != product.Id)
                 {
                     return ApiResponse<DbProduct>.CreateError(
                         HttpStatusCode.BadRequest,
@@ -114,18 +112,17 @@ namespace AltenShopApi.Services
                 }
 
                 // Mettre à jour les propriétés
-                existingProduct.Code = updatedProduct.Code;
-                existingProduct.Name = updatedProduct.Name;
-                existingProduct.Description = updatedProduct.Description;
-                existingProduct.Image = updatedProduct.Image;
-                existingProduct.Category = updatedProduct.Category;
-                existingProduct.Price = updatedProduct.Price;
-                //existingProduct.Quantity = updatedProduct.Quantity;
-                existingProduct.InternalReference = updatedProduct.InternalReference;
-                existingProduct.ShellId = updatedProduct.ShellId;
-                existingProduct.InventoryStatus = updatedProduct.InventoryStatus;
-                existingProduct.Rating = updatedProduct.Rating;
-                //existingProduct.UpdatedAt = (int)(DateTimeOffset.UtcNow.ToUnixTimeSeconds()); // Mettre à jour le timestamp
+                existingProduct.Code = product.Code;
+                existingProduct.Name = product.Name;
+                existingProduct.Description = product.Description;
+                existingProduct.Image = product.Image;
+                existingProduct.Category = product.Category;
+                existingProduct.Price = product.Price;
+                existingProduct.InternalReference = product.InternalReference;
+                existingProduct.ShellId = product.ShellId;
+                existingProduct.InventoryStatus = product.InventoryStatus;
+                existingProduct.Rating = product.Rating;
+                existingProduct.UpdatedAt = (int)(DateTimeOffset.UtcNow.ToUnixTimeSeconds());
 
                 _context.Products.Update(existingProduct);
                 await _context.SaveChangesAsync();
@@ -146,7 +143,6 @@ namespace AltenShopApi.Services
         {
             try
             {
-                // Validation simple (vous pouvez ajouter plus de règles selon vos besoins)
                 if (string.IsNullOrEmpty(product.Name))
                 {
                     return ApiResponse<DbProduct>.CreateError(
@@ -154,10 +150,7 @@ namespace AltenShopApi.Services
                         "Product name is required");
                 }
 
-                // Vous pouvez ajouter une logique pour générer un ID si nécessaire
-                // ou laisser la base de données le faire automatiquement
-
-                // Ajouter le produit
+                // On ajoute le produit
                 await _context.Products.AddAsync(product);
                 await _context.SaveChangesAsync();
 

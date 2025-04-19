@@ -43,10 +43,10 @@ namespace AltenShopApi.Services
                         "Username already exists");
                 }
 
-                // Hacher le mot de passe
+                // On hache le mot de passe
                 string passwordHash = BCrypt.Net.BCrypt.HashPassword(model.Password);
 
-                // Créer un nouvel utilisateur
+                // On créer un nouvel utilisateur
                 var user = new User
                 {
                     Username = model.Username,
@@ -56,7 +56,7 @@ namespace AltenShopApi.Services
                     CreatedAt = DateTime.UtcNow
                 };
 
-                // Ajouter l'utilisateur à la base de données
+                // On ajoute l'utilisateur à la base de données
                 await _context.Users.AddAsync(user);
                 await _context.SaveChangesAsync();
 
@@ -71,42 +71,31 @@ namespace AltenShopApi.Services
             }
         }
 
-        public async Task<ApiResponse<TokenResponse>> LoginAsync(LoginDto model)
-        {
-            try
-            {
-                // Trouver l'utilisateur par email
-                var user = await _context.Users.FirstOrDefaultAsync(u => u.Email == model.Email);
-                if (user == null)
-                {
-                    return ApiResponse<TokenResponse>.CreateError(
-                        HttpStatusCode.Unauthorized,
-                        "Invalid email or password");
-                }
+		public async Task<ApiResponse<TokenResponse>> LoginAsync(LoginDto model)
+		{
+			try
+			{
+				var user = await _context.Users.FirstOrDefaultAsync(u => u.Email == model.Email);
+				if (user == null || !BCrypt.Net.BCrypt.Verify(model.Password, user.PasswordHash))
+				{
+					return ApiResponse<TokenResponse>.CreateError(
+						HttpStatusCode.Unauthorized,
+						"Invalid email or password");
+				}
 
-                // Vérifier le mot de passe
-                bool isPasswordValid = BCrypt.Net.BCrypt.Verify(model.Password, user.PasswordHash);
-                if (!isPasswordValid)
-                {
-                    return ApiResponse<TokenResponse>.CreateError(
-                        HttpStatusCode.Unauthorized,
-                        "Invalid email or password");
-                }
+				var tokenResponse = GenerateJwtToken(user);
+				return ApiResponse<TokenResponse>.CreateSuccess(tokenResponse);
+			}
+			catch (Exception ex)
+			{
+				_logger.LogError(ex, "Error during login");
+				return ApiResponse<TokenResponse>.CreateError(
+					HttpStatusCode.InternalServerError,
+					"An error occurred during login");
+			}
+		}
 
-                // Créer le token JWT
-                var tokenResponse = GenerateJwtToken(user);
-                return ApiResponse<TokenResponse>.CreateSuccess(tokenResponse);
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Error during login");
-                return ApiResponse<TokenResponse>.CreateError(
-                    HttpStatusCode.InternalServerError,
-                    "An error occurred during login");
-            }
-        }
-
-        private TokenResponse GenerateJwtToken(User user)
+		private TokenResponse GenerateJwtToken(User user)
         {
             var jwtKey = _configuration["Jwt:Key"];
             var jwtIssuer = _configuration["Jwt:Issuer"];
@@ -141,8 +130,9 @@ namespace AltenShopApi.Services
             {
                 Token = new JwtSecurityTokenHandler().WriteToken(token),
                 Expiration = expiration,
-                Username = user.Username
-            };
+                Username = user.Username,
+				Email = user.Email
+			};
         }
     }
 }
